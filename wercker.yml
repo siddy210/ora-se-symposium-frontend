@@ -1,0 +1,49 @@
+box: 
+  id: node:latest
+dev:
+  steps:
+    - npm-install
+    - internal/watch:
+        code: npm start
+        reload: true
+        
+build:
+  steps:
+    - npm-install
+    - bash-template:
+        cwd: $WERCKER_ROOT
+    - script:
+        name: echo nodejs information
+        code: |
+          cat ./config.json
+          echo "node version $(node -v) running"
+          echo "npm version $(npm -v) running"          
+docker-build:
+  steps:
+    - internal/docker-build:
+        dockerfile: Dockerfile
+        image-name: oracle-se-symposium-frontend
+
+    - internal/docker-push: 
+        image-name: oracle-se-symposium-frontend
+        username: $DOCKER_USERNAME  
+        password: $DOCKER_PASSWORD 
+        repository: $DOCKER_USERNAME/$REPO_ADDRESS
+        tag: ${WERCKER_GIT_BRANCH}-${WERCKER_GIT_COMMIT} , latest
+
+kubernetes-deploy:
+  steps: 
+    - bash-template:
+        cwd: $WERCKER_ROOT/.
+        
+    - script:
+        name: echo nodejs information
+        code: | 
+          cat ./k8s-frontend-deployment.yaml
+          
+    - kubectl:
+        server: $KUBE_ENDPOINT
+        token: $KUBE_USER_TOKEN
+        cwd: $WERCKER_ROOT
+        insecure-skip-tls-verify: true
+        command: -n $K8SNAMESPACE apply -f k8s-frontend-deployment.yaml
